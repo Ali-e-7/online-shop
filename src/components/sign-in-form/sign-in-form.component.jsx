@@ -1,48 +1,53 @@
 import { useState } from "react";
 import {
-  createAuthUserWithEmailAndPassword,
   createUserDocumentFromAuth,
+  signInWithGooglePopup,
+  signInAuthUserWithEmailAndPassword,
 } from "../../utils/firebase/firebase.utils";
 import FormInputs from "../form-input/form-input.component";
 import Button from "../button/buttoncomponent";
-import './sign-up-form.styles.scss'
+import "./sign-in-form.styles.scss";
 const defaultFormFields = {
-  displayName: "",
   email: "",
   password: "",
-  confirmPassword: "",
 };
 
-const SignUpForm = () => {
+const SignInForm = () => {
   const [formFileds, setFormFields] = useState(defaultFormFields);
-  const { displayName, email, password, confirmPassword } = formFileds;
+  const { email, password } = formFileds;
   const resetFromField = () => {
     setFormFields(defaultFormFields);
+  };
+
+  const signInWithGoogle = async () => {
+    const { user } = await signInWithGooglePopup();
+    await createUserDocumentFromAuth(user);
   };
   const handleSubmit = async (event) => {
     event.preventDefault();
     if (password.length < 6) {
       alert("Password should be at least 6 characters");
-    }
-    if (password !== confirmPassword) {
-      alert("Password And Confirm Password Do Not Match Together!");
       return;
     }
 
     try {
-      const { user } = await createAuthUserWithEmailAndPassword(
+      const response = await signInAuthUserWithEmailAndPassword(
         email,
         password
       );
-
-      await createUserDocumentFromAuth(user, { displayName });
+      console.log(response);
       resetFromField();
-      alert("Registered Successfuly");
     } catch (error) {
-      if (error.code === "auth/email-already-in-use") {
-        alert("Cannot create user,email already in use");
+      switch (error.code) {
+        case "auth/wrong-password":
+          alert("incorrect password for email");
+          break;
+        case "auth/user-not-found":
+          alert("no user associated with this email");
+          break;
+        default:
+          console.log(error);
       }
-      console.log("user creation  encountered an error", error);
     }
   };
 
@@ -52,17 +57,9 @@ const SignUpForm = () => {
   };
   return (
     <div className="sign-up-container">
-      <h2>Don't have an account?</h2>
-      <span>Sign up with your email and password</span>
+      <h2>Already have an account?</h2>
+      <span>Sign in with your email and password</span>
       <form onSubmit={handleSubmit}>
-        <FormInputs
-          label="Display Name"
-          type="text"
-          required
-          onChange={handleChange}
-          name="displayName"
-          value={displayName}
-        />
         <FormInputs
           label="Email"
           type="email"
@@ -81,18 +78,14 @@ const SignUpForm = () => {
           value={password}
         />
 
-        <FormInputs
-          label="Confirm Password"
-          type="password"
-          required
-          onChange={handleChange}
-          name="confirmPassword"
-          value={confirmPassword}
-        />
-
-        <Button  type="submit">Sign Up </Button>
+        <div className="buttons-container">
+          <Button type="submit">Sign In </Button>
+          <Button type="button" buttonType="google" onClick={signInWithGoogle}>
+            Google sign in
+          </Button>
+        </div>
       </form>
     </div>
   );
 };
-export default SignUpForm;
+export default SignInForm;
